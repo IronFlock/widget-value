@@ -53,14 +53,14 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/RecordEvolution/widget-value.git"
+        "url": "git+https://github.com/IronFlock/widget-value.git"
     },
     "keywords": [
         "widget",
         "value"
     ],
     "bugs": {
-        "url": "https://github.com/RecordEvolution/widget-value/issues"
+        "url": "https://github.com/IronFlock/widget-value/issues"
     },
-    "homepage": "https://github.com/RecordEvolution/widget-value#readme"
+    "homepage": "https://github.com/IronFlock/widget-value#readme"
 }
