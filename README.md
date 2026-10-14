@@ -5,14 +5,14 @@ This webcomponent follows the [open-wc](https://github.com/open-wc/open-wc) reco
 ## Installation
 
 ```bash
-npm i @record-evolution/widget-value
+npm i @ironflock/widget-value
 ```
 
 ## Usage
 
 ```html
 <script type="module">
-    import '@record-evolution/widget-value/widget-value.js'
+    import '@ironflock/widget-value/widget-value.js'
 </script>
 
 <widget-value-1.1.24></widget-value-1.1.24>

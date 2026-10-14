@@ -18,7 +18,7 @@ Node `>=24.9.0`, npm `>=10.0.2` (per `engines`).
 
 ## Architecture
 
-This is a single-file LitElement web component published as `@record-evolution/widget-value`, designed to be embedded in IronFlock/RESWARM dashboards.
+This is a single-file LitElement web component published as `@ironflock/widget-value`, designed to be embedded in IronFlock/RESWARM dashboards.
 
 **Entry point:** `src/widget-value.ts` defines `<widget-value-versionplaceholder>`. The literal string `versionplaceholder` is rewritten at build time by `@rollup/plugin-replace` (configured in `vite.config.ts`) to the current `package.json` version, so each published version registers a uniquely versioned custom-element tag (e.g. `widget-value-1.1.25`). Consumers pick a version by importing it and using the matching tag — multiple versions can coexist on one page. The `demo/index.html` builds the tag dynamically via `unsafeStatic` from `package.json`.
 
