@@ -8,7 +8,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `npm run build` — Production build via Vite library mode → `dist/widget-value.js` (ES only).
 - `npm run watch` — Rebuild on changes without dev server.
 - `npm run types` — Regenerate `src/definition-schema.d.ts` from `src/definition-schema.json` using `json2ts`. Run this after editing the JSON schema.
-- `npm run analyze` — Generate custom-elements manifest (LitElement).
 - `npm run release` — `npm version patch`: preflight guards (on `main`, clean tree, not behind `origin/main`, generated files current, build passes), then the bump and a `dist/` rebuild (the `version` hook, so the local build registers the new tag), then commit, bare-semver tag, `git push --follow-tags`, then waits on the CI run and fails if the npm publish fails. `npm run release:minor` / `release:major` for other bumps.
 - `npm run link` / `npm run unlink` — Symlink the built package into a sibling `../RESWARM/frontend` checkout for local integration testing.
 
