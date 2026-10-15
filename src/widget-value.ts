@@ -1,4 +1,4 @@
-import { html, css, LitElement, PropertyValueMap, PropertyValues } from 'lit'
+import { html, css, LitElement, PropertyValues } from 'lit'
 import { repeat } from 'lit/directives/repeat.js'
 import { customElement, property, query, state } from 'lit/decorators.js'
 import { ValueDisplayConfiguration } from './definition-schema.js'
@@ -26,6 +26,31 @@ const toDate = (value: unknown): Date | undefined => {
     if (value === null || value === undefined || value === '') return undefined
     const ms = /^\s*-?\d+(\.\d+)?\s*$/.test(String(value)) ? Number(value) : Date.parse(String(value))
     return Number.isFinite(ms) ? new Date(ms) : undefined
+}
+
+// A finite number, or undefined for null, '', NaN and anything else that is not numeric.
+const toNumber = (value: unknown): number | undefined => {
+    if (value === null || value === undefined || value === '') return undefined
+    const number = typeof value === 'number' ? value : Number(value)
+    return Number.isFinite(number) ? number : undefined
+}
+
+// Decimals for toFixed(), which throws outside 0-100.
+const fractionDigits = (precision: unknown): number => {
+    const digits = Math.floor(Number(precision))
+    return Number.isFinite(digits) ? Math.min(100, Math.max(0, digits)) : 0
+}
+
+/**
+ * When a readout's value goes stale, in epoch milliseconds: the newest row's
+ * timestamp plus Maximum Latency. Undefined when it never does, because no
+ * latency is set or the newest row (the last one: rows arrive oldest first) has
+ * no readable timestamp.
+ */
+const staleAt = (rows: Data[], maxLatency: unknown): number | undefined => {
+    const seconds = toNumber(maxLatency)
+    const tsp = toDate(rows[rows.length - 1]?.tsp)
+    return seconds === undefined || !tsp ? undefined : tsp.getTime() + seconds * 1000
 }
 
 @customElement('widget-value-versionplaceholder')
@@ -57,41 +82,45 @@ export class WidgetValue extends LitElement {
     private lastLargerWidthTime?: number
     private origWidth: number = 0
     private origHeight: number = 0
+    // Re-runs transformData when the next readout's data passes Maximum Latency.
+    // Studio sends no new inputData while a device is silent, so without it the
+    // last value would stay on screen however old it gets.
+    private staleTimer?: ReturnType<typeof setTimeout>
 
     constructor() {
         super()
         this.resizeObserver = new ResizeObserver(this.applyData.bind(this))
+    }
+
+    connectedCallback() {
+        super.connectedCallback()
+        // Observed on every attach, not once: Studio moves a tile by detaching and
+        // re-attaching it, and disconnectedCallback stops observing.
         this.resizeObserver.observe(this)
+        // Back after a move: re-check the data's age, which also re-arms the stale timer.
+        if (this.hasUpdated) this.transformData()
     }
 
     disconnectedCallback() {
         super.disconnectedCallback()
-        if (this.resizeObserver) {
-            this.resizeObserver.disconnect()
-        }
-    }
-
-    protected firstUpdated(_changedProperties: PropertyValueMap<any> | Map<PropertyKey, unknown>) {
-        this.registerTheme(this.theme)
+        this.resizeObserver.disconnect()
+        clearTimeout(this.staleTimer)
+        this.staleTimer = undefined
     }
 
     protected update(changedProperties: PropertyValues): void {
-        if (changedProperties.has('inputData')) {
-            this.transformData()
-        }
+        // Before the render, so the first render already has the theme's colours.
+        if (changedProperties.has('theme') || !this.hasUpdated) this.registerTheme(this.theme)
+        if (changedProperties.has('inputData')) this.transformData()
         super.update(changedProperties)
     }
 
-    protected updated(changedProperties: Map<string, any>) {
-        if (changedProperties.has('inputData')) {
-            this.sizingSetup()
-            this.applyData()
-        }
-
-        if (changedProperties.has('theme')) {
-            this.registerTheme(this.theme)
-        }
-
+    protected updated(changedProperties: PropertyValues) {
+        if (changedProperties.has('inputData')) this.sizingSetup()
+        // After every render, not only after new data: a render rewrites the text's
+        // style attributes, which also carry the font sizes applyData sets, so a
+        // theme change used to leave the default sizes until the next data update.
+        this.applyData()
         super.updated(changedProperties)
     }
 
@@ -210,68 +239,80 @@ export class WidgetValue extends LitElement {
         this.textActive = true
     }
 
-    async transformData() {
-        if (!this.inputData) return
-        this.dataSets.forEach((d) => {
-            d.label ??= ''
-        })
+    transformData() {
         this.dataSets = new Map()
-        this.inputData?.dataseries
-            // ?.sort((a, b) => a.order - b.order)
-            ?.forEach((ds) => {
-                // pivot data
-                const distincts = ds.multiChart
-                    ? ([...new Set(ds.data?.map((d: Data) => d.pivot))].sort() as string[])
-                    : ['']
+        // Skip null list slots, and read anything but a list as no list: hand-written
+        // board templates have both, and reading a field of null would throw.
+        const list = this.inputData?.dataseries
+        const dataseries = Array.isArray(list) ? list.filter((ds) => !!ds && typeof ds === 'object') : []
+        dataseries.forEach((ds) => {
+            const rows = Array.isArray(ds.data)
+                ? ds.data.filter((d): d is Data => !!d && typeof d === 'object')
+                : []
+            // pivot data
+            const distincts = ds.multiChart ? ([...new Set(rows.map((d) => d.pivot))].sort() as string[]) : ['']
 
-                distincts.forEach((piv) => {
-                    const prefix = piv ?? ''
-                    const label = ds.label ?? ''
-                    const pds: Dataseries = {
-                        label: prefix + (!!prefix && !!label ? ' - ' : '') + label,
-                        order: ds.order,
-                        unit: ds.unit,
-                        precision: ds.precision,
-                        advanced: ds.advanced,
-                        styling: ds.styling,
-                        multiChart: ds.multiChart,
-                        value: ds.value,
-                        data: distincts.length === 1 ? ds.data : ds.data?.filter((d) => d.pivot === piv),
-                        needleValue: undefined
-                    }
-                    this.dataSets.set(pds.label ?? '', pds)
-                })
+            distincts.forEach((piv) => {
+                const prefix = piv ?? ''
+                const label = ds.label ?? ''
+                const pds: Dataseries = {
+                    label: prefix + (!!prefix && !!label ? ' - ' : '') + label,
+                    order: ds.order,
+                    unit: ds.unit,
+                    precision: ds.precision,
+                    advanced: ds.advanced,
+                    styling: ds.styling,
+                    multiChart: ds.multiChart,
+                    value: ds.value,
+                    data: distincts.length === 1 ? rows : rows.filter((d) => d.pivot === piv),
+                    needleValue: undefined
+                }
+                this.dataSets.set(pds.label ?? '', pds)
             })
+        })
 
         // filter latest values and calculate average
-        this.dataSets.forEach((ds, label) => {
-            ds.advanced ??= {}
-            // Fall back to 1 only when the setting is missing or NaN. The
-            // inverted guard this replaces reset every VALID number to 1, so
-            // averageLatest never averaged anything (widget-gauge has the
-            // correct form).
-            if (typeof ds.advanced?.averageLatest !== 'number' || isNaN(ds.advanced?.averageLatest))
-                ds.advanced.averageLatest = 1
+        const now = Date.now()
+        // the earliest moment a readout that is fresh now goes stale
+        let nextStaleAt = Infinity
+        this.dataSets.forEach((ds) => {
+            // ds.advanced is the host's own object (shared with other tiles): read the
+            // settings into locals, never write a default back into it.
+            const n = toNumber(ds.advanced?.averageLatest)
+            const averageLatest = n !== undefined && n >= 1 ? Math.floor(n) : 1
 
             if (!ds.multiChart) {
-                ds.needleValue =
-                    ds.value === undefined || ds.value === null ? undefined : Number(ds.value)
+                ds.needleValue = toNumber(ds.value)
             } else {
-                const data = ds?.data?.slice(-ds?.advanced?.averageLatest || -1) ?? []
-                const values = (data
-                    ?.map((d) => d.value)
-                    ?.filter((p) => p !== undefined)
-                    ?.map(Number) ?? []) as number[]
-                ds.needleValue = values.reduce((p, c) => p + c, 0) / values.length
-                // Check age of data Latency. The newest row sits at the END of the
-                // data array (like the gauge); rows without a parseable tsp opt out.
-                const tsp = Date.parse(data?.[data.length - 1]?.tsp ?? '')
-                if (!isNaN(tsp)) {
-                    const now = new Date().getTime()
-                    if (now - tsp > (ds.advanced?.maxLatency ?? Infinity) * 1000) ds.needleValue = undefined
-                }
+                const data = ds.data?.slice(-averageLatest) ?? []
+                // A missing, empty or non-numeric reading is no reading: skip it rather
+                // than average it in as 0 (Number(null)) or as NaN.
+                const values = data.map((d) => toNumber(d.value)).filter((v): v is number => v !== undefined)
+                ds.needleValue = values.length ? values.reduce((p, c) => p + c, 0) / values.length : undefined
+                // Hide data older than Maximum Latency. The newest row sits at the END of
+                // the data array; rows without a readable tsp opt out, since their age
+                // cannot be judged.
+                const expiresAt = staleAt(data, ds.advanced?.maxLatency)
+                if (expiresAt !== undefined && now > expiresAt) ds.needleValue = undefined
+                else if (expiresAt !== undefined) nextStaleAt = Math.min(nextStaleAt, expiresAt)
             }
         })
+        this.scheduleStaleCheck(nextStaleAt)
+    }
+
+    /** Runs transformData again just after `at` (epoch ms), when the next readout goes stale. */
+    private scheduleStaleCheck(at: number) {
+        clearTimeout(this.staleTimer)
+        this.staleTimer = undefined
+        // Nothing goes stale, or detached: connectedCallback re-checks on return.
+        if (!Number.isFinite(at) || !this.isConnected) return
+        // setTimeout fires at once for delays above 2^31 - 1 ms (about 24.8 days);
+        // a capped wait only re-checks and re-arms.
+        const delay = Math.min(Math.max(at - Date.now(), 0) + 1, 2 ** 31 - 1)
+        this.staleTimer = setTimeout(() => {
+            this.staleTimer = undefined
+            this.transformData()
+        }, delay)
     }
 
     static styles = css`
@@ -396,7 +437,7 @@ export class WidgetValue extends LitElement {
                                         ds.needleValue === null ||
                                         isNaN(ds.needleValue)
                                             ? ''
-                                            : ds.needleValue.toFixed(Math.max(0, ds.precision ?? 0))}
+                                            : ds.needleValue.toFixed(fractionDigits(ds.precision))}
                                         <span class="unit paging" ?active=${this.textActive}>${ds.unit}</span>
                                     </span>
                                 </div>
@@ -430,7 +471,7 @@ export class WidgetValue extends LitElement {
                                         ds.needleValue === null ||
                                         isNaN(ds.needleValue)
                                             ? ''
-                                            : ds.needleValue.toFixed(Math.max(0, ds.precision ?? 0))}
+                                            : ds.needleValue.toFixed(fractionDigits(ds.precision))}
                                         <span class="unit paging" ?active=${this.textActive}>${ds.unit}</span>
                                     </span>
                                 </div>

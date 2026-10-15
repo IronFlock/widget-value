@@ -38,7 +38,7 @@ export type Value = number;
  */
 export type MultiChart = boolean;
 /**
- * ISO 8601 timestamp string (e.g., '2023-11-04T22:47:52.351152+00:00'). Used with Maximum Latency setting to validate data freshness - stale data can be hidden or marked.
+ * The time of the reading. A bound timestamp column arrives as epoch milliseconds; a static value can be an ISO 8601 string, such as '2023-11-04T22:47:52Z'. Used with Maximum Latency to hide stale readings.
  */
 export type Timestamp = string;
 /**
@@ -63,7 +63,7 @@ export type Data = {
  */
 export type AverageLatestValues = number;
 /**
- * Maximum acceptable age of data in seconds. If the timestamp indicates data older than this threshold, the value may be hidden or marked as stale. Requires timestamp data to be provided. Useful for real-time monitoring where outdated values are misleading.
+ * Maximum age in seconds of the newest reading. When the newest data row's Timestamp is older, the readout shows no number, also while no new data arrives, so outdated values are never shown as current. Needs Multi Chart with a Timestamp in the data rows: a single Value carries no time. Leave it empty for no limit.
  */
 export type MaximumLatency = number;
 /**
