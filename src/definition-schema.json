@@ -13,7 +13,7 @@
             "Counting or aggregating rows — the widget performs NO aggregation (no count/sum/avg); it displays a value that already exists in the data or is embedded as a static number.",
             "A number that only means something against a minimum and maximum — use widget-gauge.",
             "How the number is changing — use widget-linechart.",
-            "Its share of a total — use widget-doughnut.",
+            "Its share of a total — use widget-doughnut when the parts are a fixed set that arrive as columns of one row (or as one value each); when the parts are rows of the result (one row per cause or program), use widget-linechart with dataseries[].type: 'bar'.",
             "Several fields per entity that belong side by side — use widget-table.",
             "Text rather than a figure — use widget-label."
         ]
