@@ -42,7 +42,6 @@ export class WidgetValue extends LitElement {
     @state()
     private textActive: boolean = true
 
-    @state() private themeBgColor?: string
     @state() private themeTitleColor?: string
     @state() private themeSubtitleColor?: string
 
@@ -109,7 +108,6 @@ export class WidgetValue extends LitElement {
         const themeText = this.theme?.theme_object?.title?.textStyle?.color
         const themeSubtext = this.theme?.theme_object?.title?.subtextStyle?.color || themeText
 
-        this.themeBgColor = `var(--re-tile-background-color, ${themeBg ?? 'transparent'})`
         this.themeTitleColor = `var(--re-text-color, ${themeText ?? 'inherit'})`
         this.themeSubtitleColor = `var(--re-text-color, ${themeSubtext ?? 'inherit'})`
     }
@@ -368,10 +366,7 @@ export class WidgetValue extends LitElement {
 
     render() {
         return html`
-            <div
-                class="wrapper"
-                style="background-color: ${this.themeBgColor}; color: ${this.themeTitleColor}"
-            >
+            <div class="wrapper" style="color: ${this.themeTitleColor}">
                 <header>
                     <h3 class="paging" ?active=${this.inputData?.title}>${this.inputData?.title}</h3>
                     <p

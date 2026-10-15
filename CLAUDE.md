@@ -23,7 +23,7 @@ This is a single-file LitElement web component published as `@ironflock/widget-v
 
 **Platform integration:** the host platform passes two reactive `@property({ type: Object })` inputs:
 - `inputData: ValueDisplayConfiguration` — shape declared in `src/definition-schema.json` and code-generated to `src/definition-schema.d.ts` via `npm run types`. The JSON schema is the source of truth; descriptions inside it drive the platform's config UI and AI agent tooling. `dataDrivenDisabled` and `condition` keys in the schema control which fields the platform exposes for data-binding vs static config.
-- `theme: { theme_name, theme_object }` — sample themes in `demo/themes/`. The component also reads CSS custom properties `--re-text-color` and `--re-tile-background-color` from its host context (these win over `theme_object`). See `registerTheme()`. These are not snapshotted: `registerTheme()` stores a `var(--re-…, <theme value>)` chain, so a change to the host property repaints the tile live without the widget being told.
+- `theme: { theme_name, theme_object }` — sample themes in `demo/themes/`. The component also reads the CSS custom property `--re-text-color` from its host context (it wins over `theme_object`). See `registerTheme()`. These are not snapshotted: `registerTheme()` stores a `var(--re-…, <theme value>)` chain, so a change to the host property repaints the tile live without the widget being told. The widget paints no background of its own: studio's `widget-item` already paints `--re-tile-background-color` on the tile, and painting it again here composited a translucent tile colour twice.
 
 **Data flow inside the widget:**
 1. `update()` calls `transformData()` whenever `inputData` changes, building `this.dataSets: Map<label, Dataseries>`.
