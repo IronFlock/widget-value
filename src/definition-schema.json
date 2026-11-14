@@ -4,17 +4,16 @@
     "aiSelection": {
         "dataShape": "One number per entry: dataseries[].data[].value, with an optional timestamp for freshness checks (advanced.maxLatency) and averaging over the latest N readings. Label, unit and decimal precision are set per entry. A pivot column produces one readout per distinct value. The subtitle can be bound as well, and shown as a local date and time when it holds a timestamp (subTitleType).",
         "useWhen": [
-            "A single current figure is the whole point — a KPI tile showing a latest reading or an already-computed count/total that exists as a value in the data.",
-            "The number has a unit and a sensible precision and should be read exactly.",
-            "One tile per machine or site should be generated from a single column (data[].pivot).",
-            "Stale data should be visibly flagged rather than shown as current (advanced.maxLatency)."
+            "A figure should be the average of its latest N readings rather than the newest one (advanced.averageLatest).",
+            "One readout per machine or site should be generated from a single column, for however many there are (multiChart with data[].pivot)."
         ],
         "notFor": [
             "Counting or aggregating rows — the widget performs NO aggregation (no count/sum/avg); it displays a value that already exists in the data or is embedded as a static number.",
             "A number that only means something against a minimum and maximum — use widget-gauge.",
             "How the number is changing — use widget-linechart.",
             "Its share of a total — use widget-doughnut when the parts are a fixed set that arrive as columns of one row (or as one value each); when the parts are rows of the result (one row per cause or program), use widget-linechart with dataseries[].type: 'bar'.",
-            "Several fields per entity that belong side by side — use widget-table.",
+            "A figure, or several figures that belong together, shown in their context — a KPI card, the current readings of one machine, one shift's output and scrap — use widget-markdown, laid out in HTML, with valueType 'number' and precision for the decimals, a bound tsp with maxLatency to hide stale readings, and text sized to the tile with container units (cqh, cqw).",
+            "Several fields of many entities side by side — use widget-table.",
             "Text rather than a figure — use widget-label."
         ]
     },
