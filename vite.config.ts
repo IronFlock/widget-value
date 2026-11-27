@@ -13,6 +13,7 @@ export default defineConfig({
         lib: { entry: 'src/widget-value.ts', formats: ['es'], fileName: 'widget-value' },
         sourcemap: true,
         rollupOptions: {
+            external: [/^lit/, /^@lit/],
             output: { banner: '/* @license Copyright (c) 2026 Record Evolution GmbH. All rights reserved.*/' }
         }
     }
